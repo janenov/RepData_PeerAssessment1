@@ -1,25 +1,106 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Peer Assessment 1 for Reproducible Research"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 ## Loading and preprocessing the data
 
+```{r LoadData, echo=TRUE}
+library(data.table)
+library(knitr)
+library(ggplot2)
+
+activitydt <- fread("activity.csv")
+```
 
 
 ## What is mean total number of steps taken per day?
+
+```{r MeanTotalNumberOfSteps, echo=TRUE}
+
+actmean <- mean(activitydt$steps, na.rm = "TRUE")
+totalperday <- aggregate(steps~date, activitydt, sum)
+mean(totalperday$steps)
+median(totalperday$steps)
+qplot(totalperday$steps, geom = "histogram", bins = 60)
+
+
+
+
+```
 
 
 
 ## What is the average daily activity pattern?
 
+```{r AverageDailyActivityPattern, echo=TRUE}
+totalperinterval <- aggregate(steps~interval, activitydt, mean)
+
+plot(totalperinterval$interval, totalperinterval$steps, type = "l", xlab = "5-minute interval", ylab = "average number of steps")
+
+subset(totalperinterval, steps == max(steps)) ##interval 835  steps 10927
+
+summary(activitydt) #NA's   :2304 
+```
+
 
 
 ## Imputing missing values
 
+```{r ImputingMissingValues, echo=TRUE}
 
+# perform the imputation using mean for that 5-minute interval which is already calculated in previous question - totalperinterval
+for (i in 1:nrow(activitydt)){
+  if (is.na(activitydt$steps[i])){
+    interval_val <- activitydt$interval[i]
+    row_id <- which(totalperinterval$interval == interval_val)
+    steps_val <- totalperinterval$steps[row_id]
+    activitydt$steps[i] <- steps_val
+  }
+}
+
+nonatotalperday <- aggregate(steps~date, activitydt, sum)
+
+qplot(nonatotalperday$steps, geom = "histogram", bins = 60)
+
+
+mean(nonatotalperday$steps)
+median(nonatotalperday$steps)
+
+## Mean and Median have not changed much at all
+
+
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r DifferencesInActivityPatterns, echo=TRUE}
+
+activitydt$date <- as.Date(activitydt$date, "%Y-%m-%d")
+
+activitydt$day <- weekdays(activitydt$date)
+
+activitydt$day_type <- c("weekday")
+
+
+for (i in 1:nrow(activitydt)){
+    if (activitydt$day[i] == "Saturday" || activitydt$day[i] == "Sunday" )
+        { activitydt$day_type[i] <- "weekend" } }
+
+
+
+qplot(interval, steps, data=activitydt, geom=c("line"), xlab="Interval", 
+      ylab="Number of steps") + facet_wrap(~ day_type, ncol=1)
+      
+      
+
+## looks like people exercise more often and more intensely during the week
+```
+
+
+
+
